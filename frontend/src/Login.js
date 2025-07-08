@@ -1,24 +1,33 @@
 import React, { useState } from 'react';
 import './Login.css';
 import { FaUser, FaLock } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+
 
 function Login() {
+
   const [identifiant, setIdentifiant] = useState('');
   const [motdepasse, setMotdepasse] = useState('');
   const [erreur, setErreur] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (identifiant === 'admin' && motdepasse === 'admin') {
-      setErreur(false);
-      alert('Connexion réussie'); // fake admin logic to be changed later to real authentication.
-    } else {
-      setErreur(true);
-    }
-  };
+  const navigate = useNavigate();
+
+const handleSubmit = (e) => {
+  e.preventDefault();
+ if (identifiant === 'admin' && motdepasse === 'admin') {
+  setErreur(false);
+  localStorage.setItem("isLoggedIn", "true"); 
+  navigate('/dashboard'); 
+} else {
+  setErreur(true);
+}
+
+};
+
 
   return (
 <div className="login-page">
+  
     <header className="login-header">
     <div className="top-banner">
     <img src="/logoMinistery.png" alt="logoMinistery" className="logoMinistery" />
@@ -28,9 +37,6 @@ function Login() {
     </span>
   </div>
 </header>
-
-
-
 
 
       <main className="login-box">
@@ -65,6 +71,8 @@ function Login() {
       </main>
     </div>
   );
+  
 }
 
 export default Login;
+ 

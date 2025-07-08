@@ -15,7 +15,7 @@
   margin-bottom: 15px;
 }
 
-/* Match input & button sizes */
+
 .skeleton-line.input {
   width: 100%;
   max-width: 360px;
@@ -29,7 +29,7 @@
   margin-top: 10px;
 }
 
-/* Reuse your layout */
+
 .login-box {
   background-color: white;
   border-radius: 20px;

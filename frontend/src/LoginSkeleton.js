@@ -1,6 +1,7 @@
 import React from 'react';
 import './LoginSkeleton.css';
 
+
 function LoginSkeleton() {
   return (
     <div className="login-page">
@@ -22,6 +23,7 @@ function LoginSkeleton() {
         <div className="skeleton-line button"></div>
       </main>
     </div>
+    
   );
 }
 
