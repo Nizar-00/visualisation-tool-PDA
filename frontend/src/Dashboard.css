@@ -208,3 +208,43 @@ body, html {
   background-color: #005bb5;
   transition: background-color 0.3s ease;
 }
+
+
+.input-prefix-wrapper {
+  position: relative;
+  display: inline-block;
+
+  width: 100%;          
+  max-width: 230px;      
+}
+
+.input-prefix-wrapper input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input-prefix {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+  pointer-events: none;
+
+  font-weight: normal;
+  font-size: 14px;    
+  font-family: Arial, sans-serif; 
+  line-height: 1.2;
+  user-select: none;    
+}
+
+
+.input-prefix + input {
+  padding-left: 40px; 
+}
+
+.filters-panel h4,
+.filters-panel label {
+  font-weight: bold;
+}
+

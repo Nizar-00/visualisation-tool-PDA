@@ -1,19 +1,27 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import './Dashboard.css';
 import { useNavigate } from 'react-router-dom';
-import useNoPagePrecedente from './useNoPagePrecedente'
-
-
+import useNoPagePrecedente from './useNoPagePrecedente';
 
 function Dashboard() {
-
   const navigate = useNavigate();
-  useNoPagePrecedente(); 
+  useNoPagePrecedente();
+  const [entite, setEntite] = useState('');
+  const [port, setPort] = useState('');
+  const [pdaNumber, setPdaNumber] = useState('');
+
+
+
+  
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
-      navigate("/", { replace: true }); 
+      navigate("/", { replace: true });
     }
   }, [navigate]);
 
@@ -25,52 +33,57 @@ function Dashboard() {
 
   return (
     <div className="dashboard-page">
-   
-    
-      
       <header className="dashboard-header">
-  <div className="top-banner">
-    <img src="/logoMinistery.png" alt="logoMinistery" className="logoMinistery" />
-    <span className="ministery-text">
-      MINISTÈRE DE L'AGRICULTURE, DE LA PÊCHE MARITIME, DU<br />
-      DÉVELOPPEMENT RURAL ET DES EAUX ET FORÊTS
-    </span>
+        <div className="top-banner">
+          <img src="/logoMinistery.png" alt="logoMinistery" className="logoMinistery" />
+          <span className="ministery-text">
+            MINISTÈRE DE L'AGRICULTURE, DE LA PÊCHE MARITIME, DU<br />
+            DÉVELOPPEMENT RURAL ET DES EAUX ET FORÊTS
+          </span>
 
-    <button className="logout-button" onClick={handleLogout}>Se déconnecter</button>
-  </div>
-</header>
+          <button className="logout-button" onClick={handleLogout}>Se déconnecter</button>
+        </div>
+      </header>
 
-      
       <div className="dashboard-main">
+<aside className="filters-panel">
+  <h4>Période</h4>
+  <label>Début</label>
+  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+  <label>Fin</label>
+  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
 
-        
-        <aside className="filters-panel">
-          <h4>Période</h4>
-          <label>Début</label>
-          <input type="date" defaultValue="2025-06-26" />
-          <label>Fin</label>
-          <input type="date" defaultValue="2025-06-26" />
 
-          <label>Entité</label>
-          <select><option>Sélectionner</option></select>
+<label>Entité</label>
+<select value={entite} onChange={e => setEntite(e.target.value)}>
+  <option value="" disabled hidden>Sélectionner</option>
+  <option value="dakhla">Dakhla</option>
+  <option value="agadir">Agadir</option>
+  <option value="laayoune">Laayoune</option>
+</select>
 
-          <label>Port</label>
-          <select><option>Sélectionner</option></select>
+<label>Port</label>
+<select disabled={!entite} value={port} onChange={e => setPort(e.target.value)}>
+  <option value="" disabled hidden>Sélectionner</option>
+  <option value="port1">Port 1</option>
+  <option value="port2">Port 2</option>
+</select>
 
-          <label>Numéro PDA</label>
-          <select><option>Sélectionner</option></select>
+<label>Numéro PDA</label>
+<div className="input-prefix-wrapper">
+  <span className="input-prefix">PDA</span>
+  <input
+    type="text"
+    value={pdaNumber}
+    onChange={e => setPdaNumber(e.target.value)}
+    placeholder="Numéro"
+  />
+</div>
 
-          <button className="search-button">Rechercher</button>
+</aside>
 
-          <div className="export-section">
-            <button className="export-button">Exporter les résultats</button>
-          </div>
-        </aside>
 
-       
         <section className="dashboard-content">
-
-        
           <div className="top-cards">
             <div className="card">
               <p className="card-title">PDA actif récent</p>
@@ -86,7 +99,6 @@ function Dashboard() {
             </div>
           </div>
 
-          
           <div className="charts">
             <div className="chart pie">
               <h4>Top 5 entités par volume de déclarations</h4>
@@ -106,7 +118,6 @@ function Dashboard() {
             </div>
           </div>
 
-          
           <div className="data-table">
             <table>
               <thead>
@@ -125,7 +136,6 @@ function Dashboard() {
               </tbody>
             </table>
           </div>
-
         </section>
       </div>
     </div>
