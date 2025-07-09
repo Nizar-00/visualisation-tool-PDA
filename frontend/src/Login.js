@@ -1,43 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Login.css';
 import { FaUser, FaLock } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
-
 function Login() {
+  const navigate = useNavigate();
 
   const [identifiant, setIdentifiant] = useState('');
   const [motdepasse, setMotdepasse] = useState('');
   const [erreur, setErreur] = useState(false);
 
-  const navigate = useNavigate();
+  useEffect(() => {
+    // Back button can’t go back from login
+    window.history.pushState(null, '', window.location.href);
 
-const handleSubmit = (e) => {
-  e.preventDefault();
- if (identifiant === 'admin' && motdepasse === 'admin') {
-  setErreur(false);
-  localStorage.setItem("isLoggedIn", "true"); 
-  navigate('/dashboard'); 
-} else {
-  setErreur(true);
-}
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
 
-};
+    window.addEventListener('popstate', onPopState);
 
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, []);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (identifiant === 'admin' && motdepasse === 'admin') {
+      setErreur(false);
+      navigate('/dashboard');
+      localStorage.setItem('isLoggedIn', 'true'); //  login flag
+    } else {
+      setErreur(true);
+    }
+  };
 
   return (
-<div className="login-page">
-  
-    <header className="login-header">
-    <div className="top-banner">
-    <img src="/logoMinistery.png" alt="logoMinistery" className="logoMinistery" />
-    <span className="ministery-text">
-      MINISTÈRE DE L'AGRICULTURE, DE LA PÊCHE MARITIME, DU<br />
-      DÉVELOPPEMENT RURAL ET DES EAUX ET FORÊTS
-    </span>
-  </div>
-</header>
-
+    <div className="login-page">
+      <header className="login-header">
+        <div className="top-banner">
+          <img src="/logoMinistery.png" alt="logoMinistery" className="logoMinistery" />
+          <span className="ministery-text">
+            MINISTÈRE DE L'AGRICULTURE, DE LA PÊCHE MARITIME, DU<br />
+            DÉVELOPPEMENT RURAL ET DES EAUX ET FORÊTS
+          </span>
+        </div>
+      </header>
 
       <main className="login-box">
         <img src="/logompm.png" alt="Logo principal" className="logo" />
@@ -71,8 +80,6 @@ const handleSubmit = (e) => {
       </main>
     </div>
   );
-  
 }
 
 export default Login;
- 
