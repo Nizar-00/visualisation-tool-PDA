@@ -228,13 +228,13 @@ body, html {
   left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: #666;
+  color: #030000;
   pointer-events: none;
 
   font-weight: normal;
   font-size: 14px;    
-  font-family: Arial, sans-serif; 
-  line-height: 1.2;
+  font-family: 'Inter', sans-serif; 
+  line-height: 1;
   user-select: none;    
 }
 
@@ -248,3 +248,12 @@ body, html {
   font-weight: bold;
 }
 
+/*
+.custom-datepicker {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 13px;
+  width: 100%;
+}
+*/

@@ -3,6 +3,11 @@ import './Dashboard.css';
 import { useNavigate } from 'react-router-dom';
 import useNoPagePrecedente from './useNoPagePrecedente';
 import DashboardSkeleton from './DashboardSkeleton';
+import DatePicker, { registerLocale } from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { fr } from 'date-fns/locale';
+
+registerLocale('fr', fr);
 
 
 
@@ -24,10 +29,10 @@ useEffect(() => {
   }
 }, [navigate]);
   
-  const today = new Date().toISOString().slice(0, 10);
+const today = new Date();
+const [startDate, setStartDate] = useState(today);
+const [endDate, setEndDate] = useState(today); //date set by default to today's date. changed to french format from initial html integrateed date system.
 
-  const [startDate, setStartDate] = useState(today);
-  const [endDate, setEndDate] = useState(today);
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
@@ -62,9 +67,22 @@ useEffect(() => {
 <aside className="filters-panel">
   <h4>Période</h4>
   <label>Début</label>
-  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-  <label>Fin</label>
-  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+<DatePicker
+  selected={startDate}
+  onChange={date => setStartDate(date)}
+  dateFormat="dd/MM/yyyy"
+  locale="fr"
+  className="custom-datepicker"
+/>  
+<label>Fin</label>
+  <DatePicker
+  selected={endDate}
+  onChange={date => setEndDate(date)}
+  dateFormat="dd/MM/yyyy"
+  locale="fr"
+  className="custom-datepicker"
+/>
+
 
 
 <label>Entité</label>
