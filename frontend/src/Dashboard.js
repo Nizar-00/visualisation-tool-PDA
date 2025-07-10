@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import './Dashboard.css';
 import { useNavigate } from 'react-router-dom';
 import useNoPagePrecedente from './useNoPagePrecedente';
+import DashboardSkeleton from './DashboardSkeleton';
+
+
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -10,8 +13,16 @@ function Dashboard() {
   const [port, setPort] = useState('');
   const [pdaNumber, setPdaNumber] = useState('');
 
+const [loading, setLoading] = useState(true);
 
-
+useEffect(() => {
+  const isLoggedIn = localStorage.getItem("isLoggedIn");
+  if (!isLoggedIn) {
+    navigate("/", { replace: true });
+  } else {
+    setTimeout(() => setLoading(false), 1200); //loading simulated
+  }
+}, [navigate]);
   
   const today = new Date().toISOString().slice(0, 10);
 
@@ -30,6 +41,8 @@ function Dashboard() {
     localStorage.removeItem("isLoggedIn");
     navigate('/', { replace: true });
   };
+
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="dashboard-page">
@@ -79,6 +92,10 @@ function Dashboard() {
     placeholder="Numéro"
   />
 </div>
+
+  <div className="export-section">
+    <button className="export-button">Exporter</button>
+  </div>
 
 </aside>
 

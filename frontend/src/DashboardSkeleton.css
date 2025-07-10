@@ -1,0 +1,67 @@
+.skeleton-header {
+  height: 60px;
+  background-color: #ccc;
+  margin-bottom: 20px;
+}
+
+.skeleton-main {
+  display: flex;
+  padding: 20px;
+  gap: 20px;
+}
+
+.skeleton-sidebar {
+  width: 230px;
+  height: 550px;
+  background-color: #ccc;
+  border-radius: 12px;
+}
+
+.skeleton-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.skeleton-cards {
+  display: flex;
+  gap: 20px;
+}
+
+.skeleton-card {
+  flex: 1;
+  height: 100px;
+  background-color: #ccc;
+  border-radius: 12px;
+}
+
+.skeleton-charts {
+  display: flex;
+  gap: 20px;
+}
+
+.skeleton-chart {
+  flex: 1;
+  height: 220px;
+  background-color: #ccc;
+  border-radius: 12px;
+}
+
+.skeleton-table {
+  height: 200px;
+  background-color: #ccc;
+  border-radius: 12px;
+}
+
+
+.shimmer {
+  animation: shimmer 1.4s infinite linear;
+  background: linear-gradient(to right, #dddddd 8%, #f0f0f0 18%, #dddddd 33%);
+  background-size: 1000px 100%;
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}

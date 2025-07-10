@@ -1,7 +1,6 @@
 import React from 'react';
 import './LoginSkeleton.css';
 
-
 function LoginSkeleton() {
   return (
     <div className="login-page">
@@ -16,14 +15,25 @@ function LoginSkeleton() {
       </header>
 
       <main className="login-box">
-        <img src="/logompm.png" alt="Logo principal" className="logo" />
+        <div className="logo-skeleton shimmer"></div>
 
-        <div className="skeleton-line input"></div>
-        <div className="skeleton-line input"></div>
-        <div className="skeleton-line button"></div>
+        <form className="login-form-skeleton">
+          <div className="input-wrapper-skeleton">
+            <div className="input-icon-skeleton shimmer" />
+            <div className="input-line-skeleton shimmer" />
+          </div>
+
+          <div className="input-wrapper-skeleton">
+            <div className="input-icon-skeleton shimmer" />
+            <div className="input-line-skeleton shimmer" />
+          </div>
+
+          <div className="button-skeleton shimmer" />
+
+          <div className="forgot-password-skeleton shimmer" />
+        </form>
       </main>
     </div>
-    
   );
 }
 
