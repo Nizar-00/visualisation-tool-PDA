@@ -12,6 +12,7 @@ registerLocale('fr', fr);
 
 
 function Dashboard() {
+  const [dashboardData, setDashboardData] = useState(null);
   const navigate = useNavigate();
   useNoPagePrecedente();
   const [entite, setEntite] = useState('');
@@ -34,6 +35,8 @@ const [startDate, setStartDate] = useState(today);
 const [endDate, setEndDate] = useState(today); //date set by default to today's date. changed to french format from initial html integrateed date system.
 
 
+
+
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
@@ -47,7 +50,57 @@ const [endDate, setEndDate] = useState(today); //date set by default to today's 
     navigate('/', { replace: true });
   };
 
+useEffect(() => {
+  const filters = {
+    entite,
+    port,
+    pdaNumber,
+    startDate,
+    endDate,
+  };
+
+  const isDefault =
+    !entite && !port && !pdaNumber;
+
+  fetchDashboardData(filters, isDefault);
+}, [entite, port, pdaNumber, startDate, endDate]);
+
+
+
   if (loading) return <DashboardSkeleton />;
+
+  function fetchDashboardData(filters, isDefault) {
+  if (isDefault) {
+    // fake API call for now
+    console.log("Fetching default global stats...");
+    // for now mock data
+    setDashboardData({
+      recentPDA: "PDA 305",
+      totalPDAs: 390,
+      inactivePDAs: 16,
+      pieData: [
+        "Dakhla - 22,1%",
+        "Agadir - 20,7%",
+        "Laayoune - 19,3%",
+        "Casablanca - 17,8%",
+        "Safi - 14,5%",
+      ],
+      barChartImg: "/mock_barchart.png",
+      tableData: [
+        ["Dakhla", "Dakhla", 58],
+        ["Casablanca", "Casablanca", 90],
+        ["Laayoune", "Laayoune", 61],
+        ["Agadir", "Agadir", 9],
+        ["Safi", "Safi", 15],
+      ],
+    });
+  } else {
+    console.log("Fetching filtered stats with:", filters);
+    // Simulate fetch with filters
+    // setDashboardData...
+  }
+}
+
 
   return (
     <div className="dashboard-page">
@@ -118,34 +171,33 @@ const [endDate, setEndDate] = useState(today); //date set by default to today's 
 </aside>
 
 
-        <section className="dashboard-content">
-          <div className="top-cards">
-            <div className="card">
-              <p className="card-title">PDA actif récent</p>
-              <h3>PDA 305</h3>
-            </div>
-            <div className="card">
-              <p className="card-title">Nombre total des PDAs</p>
-              <h3>390</h3>
-            </div>
-            <div className="card warning">
-              <p className="card-title">Nombres de PDA Inactifs</p>
-              <h3>16</h3>
-            </div>
-          </div>
+        <section className="dashboard-content"> {/* dynamic data now */}
+<div className="top-cards">
+  <div className="card">
+    <p className="card-title">PDA actif récent</p>
+    <h3>{dashboardData?.recentPDA || '...'}</h3>
+  </div>
+  <div className="card">
+    <p className="card-title">Nombre total des PDAs</p>
+    <h3>{dashboardData?.totalPDAs || '...'}</h3>
+  </div>
+  <div className="card warning">
+    <p className="card-title">Nombres de PDA Inactifs</p>
+    <h3>{dashboardData?.inactivePDAs || '...'}</h3>  {/* ... as placeholders */}
+  </div>
+</div>
+
 
           <div className="charts">
-            <div className="chart pie">
-              <h4>Top 5 entités par volume de déclarations</h4>
-              <img src="/mock_piechart.png" alt="Pie Chart" />
-              <ul className="chart-legend">
-                <li>Dakhla - 22,1%</li>
-                <li>Agadir - 20,7%</li>
-                <li>Laayoune - 19,3%</li>
-                <li>Casablanca - 17,8%</li>
-                <li>Safi - 14,5%</li>
-              </ul>
-            </div>
+<div className="chart pie"> {/* auto-generate based on dashboardData.pieData */}
+  <h4>Top 5 entités par volume de déclarations</h4>
+  <img src="/mock_piechart.png" alt="Pie Chart" />
+  <ul className="chart-legend">
+    {dashboardData?.pieData?.map((item, index) => (
+      <li key={index}>{item}</li>
+    )) || <li>...</li>}
+  </ul>
+</div>
 
             <div className="chart bar">
               <h4>Déclarations totales au cours des 7 derniers jours</h4>
