@@ -103,6 +103,9 @@ def declarations_count_par_port():
             return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+
+
 
 @app.route('/api/declarations/par_mois', methods=['GET'])
 def declarations_par_mois():
@@ -152,9 +155,25 @@ def declarations_par_mois():
     
 
 
-@app.route('/api/declarations/par_mois_fixes', methods=['GET'])
-def declarations_par_mois_fixes():
-    query = """
+@app.route('/api/declarations/par_mois_selection', methods=['POST'])
+def declarations_par_mois_selection():
+    data = request.get_json()
+    start_date = data.get('start_date')
+    end_date = data.get('end_date')
+    months = data.get('months')
+
+    if not (start_date and end_date and months and isinstance(months, list) and all(isinstance(m, int) for m in months)):
+        return jsonify({'error': 'Missing or invalid parameters: start_date, end_date and months (list of int) required'}), 400
+
+    
+    months_tuple = tuple(months)
+    if len(months_tuple) == 1:
+       
+        months_sql = f"({months_tuple[0]})"
+    else:
+        months_sql = str(months_tuple)
+
+    query = f"""
         SELECT 
           e.CODE AS entite_code,
           e.NOM AS entite_nom,
@@ -168,8 +187,8 @@ def declarations_par_mois_fixes():
         INNER JOIN adm_ref_entite e ON e.id = a.id_refentitedeclar
         WHERE a.NUMEROVISA LIKE '%PDA%'
           AND INSTR(a.NUMEROVISA, 'PDA') > 0
-          AND EXTRACT(YEAR FROM a.DATEDECLARATION) = 2025
-          AND EXTRACT(MONTH FROM a.DATEDECLARATION) IN (3, 4, 5)
+          AND a.DATEDECLARATION BETWEEN TO_DATE(:start_date, 'YYYY-MM-DD') AND TO_DATE(:end_date, 'YYYY-MM-DD')
+          AND EXTRACT(MONTH FROM a.DATEDECLARATION) IN {months_sql}
           AND REGEXP_LIKE(SUBSTR(a.NUMEROVISA, INSTR(a.NUMEROVISA, 'PDA') + 3, 3), '^[0-9]+$')
         GROUP BY e.CODE, e.NOM, EXTRACT(MONTH FROM a.DATEDECLARATION)
         ORDER BY e.CODE, mois
@@ -178,7 +197,7 @@ def declarations_par_mois_fixes():
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(query)
+            cursor.execute(query, {'start_date': start_date, 'end_date': end_date})
             rows = cursor.fetchall()
             result = [
                 {
@@ -192,6 +211,7 @@ def declarations_par_mois_fixes():
             return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/declarations/count_par_ports_all', methods=['POST'])
 def declarations_count_par_ports_all():
@@ -335,9 +355,79 @@ def declarations_count_par_entite_mere_nom():
             return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
     
 
+@app.route('/api/declarations/par_port_selection', methods=['POST'])
+def declarations_par_port_selection():
+    data = request.get_json()
+
+    start_date = data.get('start_date')
+    end_date = data.get('end_date')
+    entite_mere_nom = data.get('entite_mere_nom')
+    selected_port = data.get('selected_port', '')
+    selected_pda_code = data.get('selected_pda_code', '')
+
+    # Base WHERE clause
+    where_conditions = [
+        "D.DATE_DECLARATION BETWEEN TO_DATE(:start_date, 'YYYY-MM-DD') AND TO_DATE(:end_date, 'YYYY-MM-DD')"
+    ]
+    bind_vars = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'entite_mere_nom': entite_mere_nom
+    }
+
+    if selected_port:
+        where_conditions.append("D.ENTITE_CODE = :selected_port")
+        bind_vars['selected_port'] = selected_port
+
+    if selected_pda_code:
+        where_conditions.append("D.NUMEROVISA LIKE '%' || :selected_pda_code || '%'")
+        bind_vars['selected_pda_code'] = selected_pda_code
+
+    where_clause = " AND ".join(where_conditions)
+
+    query = f"""
+ SELECT
+    A.ENTITE_MERE_CODE,
+    A.ENTITE_MERE_NOM,
+    COUNT(DISTINCT D.NUMEROVISA) AS NOMBRE_DECLARATIONS_NEW_PDA
+FROM PE_PRD_DECLARATIONPECHE D
+JOIN (
+    SELECT DISTINCT
+        REGEXP_SUBSTR(E.ENTITE_CODE, '^[^/]+') AS ENTITE_MERE_CODE,
+        E.ENTITE_NOM AS ENTITE_MERE_NOM
+    FROM ADM_REF_ENTITE E
+) A ON A.ENTITE_MERE_CODE = REGEXP_SUBSTR(D.ENTITE_CODE, '^[^/]+')
+WHERE
+    D.DATE_DECLARATION BETWEEN TO_DATE(:start_date, 'YYYY-MM-DD') AND TO_DATE(:end_date, 'YYYY-MM-DD')
+    AND A.ENTITE_MERE_NOM = :entite_mere_nom
+    AND (:selected_port IS NULL OR D.ENTITE_CODE = :selected_port)
+    AND (:selected_pda_code IS NULL OR D.NUMEROVISA LIKE '%' || :selected_pda_code || '%')
+GROUP BY
+    A.ENTITE_MERE_CODE,
+    A.ENTITE_MERE_NOM
+ORDER BY
+    A.ENTITE_MERE_CODE
+
+    """
+
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, bind_vars)
+            rows = cursor.fetchall()
+            result = [
+                {
+                    'entite_mere_code': row[0],
+                    'entite_mere_nom': row[1],
+                    'nombre_declarations_new_pda': row[2]
+                }
+                for row in rows
+            ]
+            return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
