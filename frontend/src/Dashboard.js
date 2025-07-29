@@ -9,8 +9,6 @@ import { fr } from 'date-fns/locale';
 
 registerLocale('fr', fr);
 
-
-
 function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const navigate = useNavigate();
@@ -19,24 +17,43 @@ function Dashboard() {
   const [port, setPort] = useState('');
   const [pdaNumber, setPdaNumber] = useState('');
 
-const [loading, setLoading] = useState(true);
+  const [entites, setEntites] = useState([]);
+  const [ports, setPorts] = useState([]);
 
-useEffect(() => {
-  const isLoggedIn = localStorage.getItem("isLoggedIn");
-  if (!isLoggedIn) {
-    navigate("/", { replace: true });
-  } else {
-    setTimeout(() => setLoading(false), 1200); //loading simulated
-  }
-}, [navigate]);
-  
-const today = new Date();
-const [startDate, setStartDate] = useState(today);
-const [endDate, setEndDate] = useState(today); //date set by default to today's date. changed to french format from initial html integrateed date system.
+  const [loading, setLoading] = useState(true);
 
+  // Load entities on mount
+  useEffect(() => {
+    fetch('http://localhost:5000/api/entites_mere')
+      .then(res => res.json())
+      .then(data => setEntites(data))
+      .catch(err => console.error('Failed to fetch entites:', err));
+  }, []);
 
+  // Load ports when entite changes
+  useEffect(() => {
+    if (!entite) {
+      setPorts([]);
+      setPort('');
+      return;
+    }
+    fetch(`http://localhost:5000/api/ports?entiteCode=${encodeURIComponent(entite)}`)
+      .then(res => res.json())
+      .then(data => setPorts(data))
+      .catch(err => console.error('Failed to fetch ports:', err));
+  }, [entite]);
 
+  // Redirect if not logged in, stop loading after delay
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    if (!isLoggedIn) {
+      navigate("/", { replace: true });
+    } else {
+      setTimeout(() => setLoading(false), 1200);
+    }
+  }, [navigate]);
 
+  // Also redirect if not logged in (redundant but safe)
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
@@ -44,63 +61,128 @@ const [endDate, setEndDate] = useState(today); //date set by default to today's 
     }
   }, [navigate]);
 
+  const today = new Date();
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
+
+  // Normalize filter names for backend calls
+  const entiteName = entites.find(e => e.code === entite)?.name || '';
+
+  // Core fetch logic: call backend routes based on filters
+  function fetchDataBasedOnFilters({ entiteName, port, pdaNumber, startDate, endDate }) {
+    const start_date = startDate.toISOString().split('T')[0];
+    const end_date = endDate.toISOString().split('T')[0];
+
+    // If PDA number filled, call PDA count API
+    if (pdaNumber && pdaNumber.trim() !== '') {
+      return fetch('http://localhost:5000/api/declarations/count_par_pda', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pda_code: pdaNumber.trim(),
+          start_date,
+          end_date,
+        }),
+      }).then(res => res.json());
+    }
+
+    // If port selected, call port count API
+    if (port) {
+      // Note: backend expects port_name as port code or name? Your backend uses port_name as name.
+      // Your frontend port list has code and name, we send name to backend.
+      const selectedPortName = ports.find(p => p.code === port)?.name || port;
+      return fetch('http://localhost:5000/api/declarations/count_par_port', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          port_name: selectedPortName,
+          start_date,
+          end_date,
+        }),
+      }).then(res => res.json());
+    }
+
+    // If entiteName selected (no port), call entite mere count API
+    if (entiteName) {
+      return fetch('http://localhost:5000/api/declarations/count_par_entite_mere_nom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entite_mere_nom: entiteName,
+          start_date,
+          end_date,
+        }),
+      }).then(res => res.json());
+    }
+
+    // Otherwise, fallback to all ports count
+    return fetch('http://localhost:5000/api/declarations/count_par_ports_all', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        start_date,
+        end_date,
+      }),
+    }).then(res => res.json());
+  }
+
+  // Fetch dashboard data when filters change
+  useEffect(() => {
+    if (!entite && !port && !pdaNumber) {
+      setDashboardData(null);
+      return;
+    }
+
+    fetchDataBasedOnFilters({ entiteName, port, pdaNumber, startDate, endDate })
+      .then(data => {
+        if (data.error) {
+          setDashboardData(null);
+          console.error('Backend error:', data.error);
+          return;
+        }
+
+        // Normalize data shape for UI
+        let totalPDAs = 0;
+        let pieData = [];
+        let tableData = [];
+        let recentPDA = pdaNumber ? `PDA ${pdaNumber.trim()}` : 'N/A';
+
+        if (Array.isArray(data)) {
+          totalPDAs = data.reduce((acc, row) => acc + (row.nombre_declarations_new_pda || 0), 0);
+          pieData = data.map(row => `${row.entite_mere_nom || row.entite_nom || 'Inconnu'} - ${row.nombre_declarations_new_pda}`);
+          tableData = data.map(row => [
+            row.entite_mere_code || row.entite_code || '',
+            row.entite_mere_nom || row.entite_nom || '',
+            row.nombre_declarations_new_pda || 0,
+          ]);
+        } else if (typeof data === 'object') {
+          totalPDAs = data.total_declarations_distinct || 0;
+          pieData = [ `PDA ${pdaNumber.trim()} - ${totalPDAs}` ];
+          tableData = [[ pdaNumber.trim(), 'N/A', totalPDAs ]];
+        }
+
+        setDashboardData({
+          recentPDA,
+          totalPDAs,
+          inactivePDAs: 0, // placeholder, no data yet
+          pieData,
+          barChartImg: '/mock_barchart.png',
+          tableData,
+        });
+      })
+      .catch(err => {
+        console.error('Fetch error:', err);
+        setDashboardData(null);
+      });
+  }, [entite, port, pdaNumber, startDate, endDate, entiteName, ports]);
+
   const handleLogout = (e) => {
     e.preventDefault();
     localStorage.removeItem("isLoggedIn");
     navigate('/', { replace: true });
   };
 
-useEffect(() => {
-  const filters = {
-    entite,
-    port,
-    pdaNumber,
-    startDate,
-    endDate,
-  };
-
-  const isDefault =
-    !entite && !port && !pdaNumber;
-
-  fetchDashboardData(filters, isDefault);
-}, [entite, port, pdaNumber, startDate, endDate]);
-
-
-
   if (loading) return <DashboardSkeleton />;
-
-  function fetchDashboardData(filters, isDefault) {
-  if (isDefault) {
-    // fake API call for now
-    console.log("Fetching default global stats...");
-    // for now mock data
-    setDashboardData({
-      recentPDA: "PDA 305",
-      totalPDAs: 390,
-      inactivePDAs: 16,
-      pieData: [
-        "Dakhla - 22,1%",
-        "Agadir - 20,7%",
-        "Laayoune - 19,3%",
-        "Casablanca - 17,8%",
-        "Safi - 14,5%",
-      ],
-      barChartImg: "/mock_barchart.png",
-      tableData: [
-        ["Dakhla", "Dakhla", 58],
-        ["Casablanca", "Casablanca", 90],
-        ["Laayoune", "Laayoune", 61],
-        ["Agadir", "Agadir", 9],
-        ["Safi", "Safi", 15],
-      ],
-    });
-  } else {
-    console.log("Fetching filtered stats with:", filters);
-    // Simulate fetch with filters
-    // setDashboardData...
-  }
-}
-
 
   return (
     <div className="dashboard-page">
@@ -117,91 +199,87 @@ useEffect(() => {
       </header>
 
       <div className="dashboard-main">
-<aside className="filters-panel">
-  <h4>Période</h4>
-  <label>Début</label>
-<DatePicker
-  selected={startDate}
-  onChange={date => setStartDate(date)}
-  dateFormat="dd/MM/yyyy"
-  locale="fr"
-  className="custom-datepicker"
-/>  
-<label>Fin</label>
-  <DatePicker
-  selected={endDate}
-  onChange={date => setEndDate(date)}
-  dateFormat="dd/MM/yyyy"
-  locale="fr"
-  className="custom-datepicker"
-/>
+        <aside className="filters-panel">
+          <h4>Période</h4>
+          <label>Début</label>
+          <DatePicker
+            selected={startDate}
+            onChange={date => setStartDate(date)}
+            dateFormat="dd/MM/yyyy"
+            locale="fr"
+            className="custom-datepicker"
+          />
+          <label>Fin</label>
+          <DatePicker
+            selected={endDate}
+            onChange={date => setEndDate(date)}
+            dateFormat="dd/MM/yyyy"
+            locale="fr"
+            className="custom-datepicker"
+          />
 
+          <label>Entité</label>
+          <select value={entite} onChange={e => setEntite(e.target.value)}>
+            <option value="" disabled hidden>Sélectionner</option>
+            {entites.map(e => (
+              <option key={e.code} value={e.code}>{e.name}</option>
+            ))}
+          </select>
 
+          <label>Port</label>
+          <select disabled={!entite} value={port} onChange={e => setPort(e.target.value)}>
+            <option value="" disabled hidden>Sélectionner</option>
+            {ports.map(p => (
+              <option key={p.code} value={p.code}>{p.name}</option>
+            ))}
+          </select>
 
-<label>Entité</label>
-<select value={entite} onChange={e => setEntite(e.target.value)}>
-  <option value="" disabled hidden>Sélectionner</option>
-  <option value="dakhla">Dakhla</option>
-  <option value="agadir">Agadir</option>
-  <option value="laayoune">Laayoune</option>
-</select>
+          <label>Numéro PDA</label>
+          <div className="input-prefix-wrapper">
+            <span className="input-prefix">PDA</span>
+            <input
+              type="text"
+              value={pdaNumber}
+              onChange={e => setPdaNumber(e.target.value)}
+              placeholder="Numéro"
+            />
+          </div>
 
-<label>Port</label>
-<select disabled={!entite} value={port} onChange={e => setPort(e.target.value)}>
-  <option value="" disabled hidden>Sélectionner</option>
-  <option value="port1">Port 1</option>
-  <option value="port2">Port 2</option>
-</select>
+          <div className="export-section">
+            <button className="export-button" disabled>Exporter (à implémenter)</button>
+          </div>
+        </aside>
 
-<label>Numéro PDA</label>
-<div className="input-prefix-wrapper">
-  <span className="input-prefix">PDA</span>
-  <input
-    type="text"
-    value={pdaNumber}
-    onChange={e => setPdaNumber(e.target.value)}
-    placeholder="Numéro"
-  />
-</div>
-
-  <div className="export-section">
-    <button className="export-button">Exporter</button>
-  </div>
-
-</aside>
-
-
-        <section className="dashboard-content"> {/* dynamic data now */}
-<div className="top-cards">
-  <div className="card">
-    <p className="card-title">PDA actif récent</p>
-    <h3>{dashboardData?.recentPDA || '...'}</h3>
-  </div>
-  <div className="card">
-    <p className="card-title">Nombre total des PDAs</p>
-    <h3>{dashboardData?.totalPDAs || '...'}</h3>
-  </div>
-  <div className="card warning">
-    <p className="card-title">Nombres de PDA Inactifs</p>
-    <h3>{dashboardData?.inactivePDAs || '...'}</h3>  {/* ... as placeholders */}
-  </div>
-</div>
-
+        <section className="dashboard-content">
+          <div className="top-cards">
+            <div className="card">
+              <p className="card-title">PDA actif récent</p>
+              <h3>{dashboardData?.recentPDA || '...'}</h3>
+            </div>
+            <div className="card">
+              <p className="card-title">Nombre total des PDAs</p>
+              <h3>{dashboardData?.totalPDAs ?? '...'}</h3>
+            </div>
+            <div className="card warning">
+              <p className="card-title">Nombres de PDA Inactifs</p>
+              <h3>{dashboardData?.inactivePDAs ?? '...'}</h3>
+            </div>
+          </div>
 
           <div className="charts">
-<div className="chart pie"> {/* auto-generate based on dashboardData.pieData */}
-  <h4>Top 5 entités par volume de déclarations</h4>
-  <img src="/mock_piechart.png" alt="Pie Chart" />
-  <ul className="chart-legend">
-    {dashboardData?.pieData?.map((item, index) => (
-      <li key={index}>{item}</li>
-    )) || <li>...</li>}
-  </ul>
-</div>
+            <div className="chart pie">
+              <h4>Top 5 entités par volume de déclarations</h4>
+              <img src="/mock_piechart.png" alt="Pie Chart" />
+              <ul className="chart-legend">
+                {dashboardData?.pieData?.map((item, index) => (
+                  <li key={index}>{item}</li>
+                )) || <li>...</li>}
+              </ul>
+            </div>
 
             <div className="chart bar">
               <h4>Déclarations totales au cours des 7 derniers jours</h4>
-              <img src="/mock_barchart.png" alt="Bar Chart" />
+              <img src={dashboardData?.barChartImg || "/mock_barchart.png"} alt="Bar Chart" />
             </div>
           </div>
 
@@ -215,11 +293,17 @@ useEffect(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Dakhla</td><td>Dakhla</td><td>58</td></tr>
-                <tr><td>Casablanca</td><td>Casablanca</td><td>90</td></tr>
-                <tr><td>Laayoune</td><td>Laayoune</td><td>61</td></tr>
-                <tr><td>Agadir</td><td>Agadir</td><td>9</td></tr>
-                <tr><td>Safi</td><td>Safi</td><td>15</td></tr>
+                {dashboardData?.tableData?.length > 0 ? (
+                  dashboardData.tableData.map((row, index) => (
+                    <tr key={index}>
+                      <td>{row[0]}</td>
+                      <td>{row[1]}</td>
+                      <td>{row[2]}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr><td colSpan="3">Aucune donnée disponible</td></tr>
+                )}
               </tbody>
             </table>
           </div>

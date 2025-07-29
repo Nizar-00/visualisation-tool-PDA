@@ -356,7 +356,6 @@ def declarations_count_par_entite_mere_nom():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
-
 @app.route('/api/declarations/par_port_selection', methods=['POST'])
 def declarations_par_port_selection():
     data = request.get_json()
@@ -367,9 +366,11 @@ def declarations_par_port_selection():
     selected_port = data.get('selected_port', '')
     selected_pda_code = data.get('selected_pda_code', '')
 
-    # Base WHERE clause
+    if not (start_date and end_date and entite_mere_nom):
+        return jsonify({'error': 'Missing parameters: start_date, end_date, entite_mere_nom'}), 400
+
     where_conditions = [
-        "D.DATE_DECLARATION BETWEEN TO_DATE(:start_date, 'YYYY-MM-DD') AND TO_DATE(:end_date, 'YYYY-MM-DD')"
+        "D.DATEDECLARATION BETWEEN TO_DATE(:start_date, 'YYYY-MM-DD') AND TO_DATE(:end_date, 'YYYY-MM-DD')"
     ]
     bind_vars = {
         'start_date': start_date,
@@ -377,8 +378,10 @@ def declarations_par_port_selection():
         'entite_mere_nom': entite_mere_nom
     }
 
+    # Join with adm_ref_entite as E on foreign key
+    # filter port on E.CODE (code of port) instead of non-existent D.ENTITE_CODE
     if selected_port:
-        where_conditions.append("D.ENTITE_CODE = :selected_port")
+        where_conditions.append("E.CODE = :selected_port")
         bind_vars['selected_port'] = selected_port
 
     if selected_pda_code:
@@ -388,28 +391,27 @@ def declarations_par_port_selection():
     where_clause = " AND ".join(where_conditions)
 
     query = f"""
- SELECT
-    A.ENTITE_MERE_CODE,
-    A.ENTITE_MERE_NOM,
-    COUNT(DISTINCT D.NUMEROVISA) AS NOMBRE_DECLARATIONS_NEW_PDA
-FROM PE_PRD_DECLARATIONPECHE D
-JOIN (
-    SELECT DISTINCT
-        REGEXP_SUBSTR(E.ENTITE_CODE, '^[^/]+') AS ENTITE_MERE_CODE,
-        E.ENTITE_NOM AS ENTITE_MERE_NOM
-    FROM ADM_REF_ENTITE E
-) A ON A.ENTITE_MERE_CODE = REGEXP_SUBSTR(D.ENTITE_CODE, '^[^/]+')
-WHERE
-    D.DATE_DECLARATION BETWEEN TO_DATE(:start_date, 'YYYY-MM-DD') AND TO_DATE(:end_date, 'YYYY-MM-DD')
-    AND A.ENTITE_MERE_NOM = :entite_mere_nom
-    AND (:selected_port IS NULL OR D.ENTITE_CODE = :selected_port)
-    AND (:selected_pda_code IS NULL OR D.NUMEROVISA LIKE '%' || :selected_pda_code || '%')
-GROUP BY
-    A.ENTITE_MERE_CODE,
-    A.ENTITE_MERE_NOM
-ORDER BY
-    A.ENTITE_MERE_CODE
-
+        SELECT
+            A.ENTITE_MERE_CODE,
+            A.ENTITE_MERE_NOM,
+            COUNT(DISTINCT D.NUMEROVISA) AS NOMBRE_DECLARATIONS_NEW_PDA
+        FROM PE_PRD_DECLARATIONPECHE D
+        JOIN ADM_REF_ENTITE E ON E.ID = D.ID_REFENTITEDECLAR  -- join to get port/entity details
+        JOIN (
+            SELECT DISTINCT
+                REGEXP_SUBSTR(CODE, '^[^/]+') AS ENTITE_MERE_CODE,
+                NOM AS ENTITE_MERE_NOM
+            FROM ADM_REF_ENTITE
+            WHERE CODE NOT LIKE '%/%'
+        ) A ON A.ENTITE_MERE_CODE = REGEXP_SUBSTR(E.CODE, '^[^/]+')
+        WHERE
+            A.ENTITE_MERE_NOM = :entite_mere_nom
+            AND {where_clause}
+        GROUP BY
+            A.ENTITE_MERE_CODE,
+            A.ENTITE_MERE_NOM
+        ORDER BY
+            A.ENTITE_MERE_CODE
     """
 
     try:
@@ -428,6 +430,54 @@ ORDER BY
             return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+    
+
+
+    
+@app.route('/api/entites_mere', methods=['GET'])
+def get_entites_mere():
+    query = """
+        SELECT CODE, NOM
+        FROM adm_ref_entite
+        WHERE CODE NOT LIKE '%/%'
+        ORDER BY CODE
+    """
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            result = [{'code': row[0], 'name': row[1]} for row in rows]
+            return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/ports', methods=['GET'])
+def get_ports_by_entite():
+    entite_code = request.args.get('entiteCode')
+    if not entite_code:
+        return jsonify({'error': 'entiteCode parameter required'}), 400
+
+    query = """
+        SELECT CODE, NOM
+        FROM adm_ref_entite
+        WHERE CODE LIKE :entite_code || '/%'
+        ORDER BY CODE
+    """
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, {'entite_code': entite_code})
+            rows = cursor.fetchall()
+            result = [{'code': row[0], 'name': row[1]} for row in rows]
+            return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 
 
 if __name__ == '__main__':
