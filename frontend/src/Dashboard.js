@@ -8,7 +8,6 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { fr } from 'date-fns/locale';
 
 registerLocale('fr', fr);
-
 function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const navigate = useNavigate();
@@ -22,7 +21,7 @@ function Dashboard() {
 
   const [loading, setLoading] = useState(true);
 
-  // Load entities on mount
+
   useEffect(() => {
     fetch('http://localhost:5000/api/entites_mere')
       .then(res => res.json())
@@ -30,7 +29,7 @@ function Dashboard() {
       .catch(err => console.error('Failed to fetch entites:', err));
   }, []);
 
-  // Load ports when entite changes
+ 
   useEffect(() => {
     if (!entite) {
       setPorts([]);
@@ -43,7 +42,7 @@ function Dashboard() {
       .catch(err => console.error('Failed to fetch ports:', err));
   }, [entite]);
 
-  // Redirect if not logged in, stop loading after delay
+
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
@@ -53,7 +52,7 @@ function Dashboard() {
     }
   }, [navigate]);
 
-  // Also redirect if not logged in (redundant but safe)
+  
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
@@ -65,15 +64,13 @@ function Dashboard() {
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
 
-  // Normalize filter names for backend calls
+ 
   const entiteName = entites.find(e => e.code === entite)?.name || '';
 
-  // Core fetch logic: call backend routes based on filters
   function fetchDataBasedOnFilters({ entiteName, port, pdaNumber, startDate, endDate }) {
     const start_date = startDate.toISOString().split('T')[0];
     const end_date = endDate.toISOString().split('T')[0];
 
-    // If PDA number filled, call PDA count API
     if (pdaNumber && pdaNumber.trim() !== '') {
       return fetch('http://localhost:5000/api/declarations/count_par_pda', {
         method: 'POST',
@@ -86,10 +83,8 @@ function Dashboard() {
       }).then(res => res.json());
     }
 
-    // If port selected, call port count API
     if (port) {
-      // Note: backend expects port_name as port code or name? Your backend uses port_name as name.
-      // Your frontend port list has code and name, we send name to backend.
+
       const selectedPortName = ports.find(p => p.code === port)?.name || port;
       return fetch('http://localhost:5000/api/declarations/count_par_port', {
         method: 'POST',
@@ -102,7 +97,6 @@ function Dashboard() {
       }).then(res => res.json());
     }
 
-    // If entiteName selected (no port), call entite mere count API
     if (entiteName) {
       return fetch('http://localhost:5000/api/declarations/count_par_entite_mere_nom', {
         method: 'POST',
@@ -115,7 +109,6 @@ function Dashboard() {
       }).then(res => res.json());
     }
 
-    // Otherwise, fallback to all ports count
     return fetch('http://localhost:5000/api/declarations/count_par_ports_all', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -126,7 +119,6 @@ function Dashboard() {
     }).then(res => res.json());
   }
 
-  // Fetch dashboard data when filters change
   useEffect(() => {
     if (!entite && !port && !pdaNumber) {
       setDashboardData(null);
@@ -141,7 +133,6 @@ function Dashboard() {
           return;
         }
 
-        // Normalize data shape for UI
         let totalPDAs = 0;
         let pieData = [];
         let tableData = [];
@@ -164,7 +155,7 @@ function Dashboard() {
         setDashboardData({
           recentPDA,
           totalPDAs,
-          inactivePDAs: 0, // placeholder, no data yet
+          inactivePDAs: 0, // placeholder
           pieData,
           barChartImg: '/mock_barchart.png',
           tableData,

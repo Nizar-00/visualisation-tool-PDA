@@ -378,8 +378,6 @@ def declarations_par_port_selection():
         'entite_mere_nom': entite_mere_nom
     }
 
-    # Join with adm_ref_entite as E on foreign key
-    # filter port on E.CODE (code of port) instead of non-existent D.ENTITE_CODE
     if selected_port:
         where_conditions.append("E.CODE = :selected_port")
         bind_vars['selected_port'] = selected_port
